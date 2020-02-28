@@ -45,6 +45,17 @@ class CliGeneratorTest {
                         "assert ignore order command blocks"),
 
                 of(asList("a", "b", "c"), new CommandBlock[]{ignoreOrder("a", "b")},
+                        "assert ignore order command blocks"),
+
+                of(asList("a", "b", "c"), new CommandBlock[]{checkOrder("a"), checkOrder("b", "c")},
+                        "assert ignore order command blocks"),
+
+                of(asList("a", "b", "c"), new CommandBlock[]{checkOrder("a"), ignoreOrder("c", "b")},
+                        "assert ignore order command blocks"),
+
+                of(asList("a", "b", "c", "d", "e"),
+                        new CommandBlock[]{
+                                ignoreOrder("b", "a"), ignoreOrder("d", "c"), checkOrder("e")},
                         "assert ignore order command blocks")
         );
     }
@@ -65,10 +76,22 @@ class CliGeneratorTest {
                 of(asList("a", "b", "c"), new CommandBlock[]{ignoreOrder("b", "c"), ignoreOrder("a")},
                         "assert ignoring order command blocks"),
 
+                of(asList("a", "b", "c"), new CommandBlock[]{ignoreOrder("b", "c")},
+                        "assert ignore order command blocks"),
+
+                of(asList("a", "b", "c"), new CommandBlock[]{ignoreOrder("c", "b")},
+                        "assert ignore order command blocks"),
+
                 of(singletonList("d"), new CommandBlock[]{ignoreOrder("d ")},
                         "assert ignore order command blocks"),
 
                 of(singletonList("d "), new CommandBlock[]{ignoreOrder("d")},
+                        "assert ignore order command blocks"),
+
+                of(asList("a\n b", "c"), new CommandBlock[]{ignoreOrder("a"), ignoreOrder(" b", "c")},
+                        "assert ignore order command blocks"),
+
+                of(asList("a", "b\n c"), new CommandBlock[]{checkOrder("a"), ignoreOrder(" c", "b")},
                         "assert ignore order command blocks"),
 
                 of(asList("a", "b"), new CommandBlock[]{ignoreOrder("a", "b", "c")},
@@ -76,7 +99,7 @@ class CliGeneratorTest {
         );
     }
 
-        @ParameterizedTest
+    @ParameterizedTest
     @DisplayName("not assert commands, not preserving order")
     @MethodSource("testDataForNegativeScenarios")
     void notAssertCommandsNotPreservingOrder(List<String> actualCommands,

@@ -3,12 +3,14 @@ package baboshyn.stramapi;
 import com.google.common.base.Joiner;
 import org.hamcrest.Matcher;
 
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
+import static baboshyn.stramapi.CliGenerator.MatcherDescription.of;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static org.apache.commons.lang3.StringUtils.SPACE;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Stream.of;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 
@@ -25,26 +27,97 @@ public class CliGenerator {
      * @param commandBlocks blocks of commands to appear in the source list
      */
     void assertCliCommandsContainBlocks(List<String> actualCommands, CommandBlock... commandBlocks) {
-        List<String> actualCopy = new ArrayList<>(actualCommands);
-        for (CommandBlock commandBlock : commandBlocks) {
+//        List<String> actualCopy = new ArrayList<>(actualCommands);
+
+        final int[] index = {0};
+
+        final List<String> actualCopy = actualCommands
+                .stream()
+                .map(command -> Arrays.asList(command.split("\n")))
+                .flatMap(Collection::stream)
+                .collect(toList());
+
+        System.out.println(actualCopy);
+
+        boolean allMatch = Arrays.stream(commandBlocks)
+                .map(commandBlock -> of(convertCommandBlockToMatcher(commandBlock), commandBlock.commands.size()))
+                .peek(x -> System.out.println(x.matcher))
+                .allMatch(description -> {
+                    boolean matches = description.matcher.matches(actualCopy.subList(index[0], index[0] + description.size));
+                    index[0] = description.size;
+                    return matches;
+                });
+
+        System.out.println(allMatch);
+
+        if (!allMatch) {
+
+            throw new AssertionError("Not matched.");
+        }
+
+ /*       if (!(isCommandsMatch && actualCopy.isEmpty())) {
+
+            throw new AssertionError("Not matched.");
+        }*/
+
+/*        for (CommandBlock commandBlock : commandBlocks) {
+
             final boolean fitsRemaining = commandBlock.commands.size() < actualCopy.size();
-            final List<String> subList = actualCopy.subList(0, fitsRemaining ? commandBlock.commands.size() : actualCopy.size());
+
+//            final List<String> subList = actualCopy.subList(0, fitsRemaining ? commandBlock.commands.size() : actualCopy.size());
+
+            final long maxSize = fitsRemaining ? commandBlock.commands.size() : actualCopy.size();
+
+            final List<String> subList = actualCopy.stream().limit(maxSize).collect(toList());
+
             final Object[] expectedBlock = joinMainAndSubCommands(commandBlock.commands).toArray();
+
             final Matcher<Iterable<?>> matcher =
                     commandBlock.checkOrder ? contains(expectedBlock) : containsInAnyOrder(expectedBlock);
+
             int index = subList.size();
 
             while (!matcher.matches(joinMainAndSubCommands(subList))) {
+
                 final String nextCommand = actualCopy.get(index);
+
                 subList.remove(0);
+
                 subList.add(nextCommand);
+
                 index++;
+
                 if (index == actualCopy.size()) {
+
                     // we checked all remaining commands and the are no matches
                     throw new AssertionError("Not matched: " + commandBlock.commands.toString());
                 }
             }
+
             actualCopy = fitsRemaining ? actualCopy.subList(index, actualCopy.size()) : emptyList();
+        }*/
+    }
+
+    private Matcher<Iterable<?>> convertCommandBlockToMatcher(CommandBlock block) {
+
+        return block.checkOrder ?
+                contains(block.commands.toArray()) :
+                containsInAnyOrder(block.commands.toArray());
+    }
+
+    static final class MatcherDescription {
+
+        private final Matcher<Iterable<?>> matcher;
+        private final int size;
+
+        private MatcherDescription(Matcher<Iterable<?>> matcher, int size) {
+            this.matcher = matcher;
+            this.size = size;
+        }
+
+        public static MatcherDescription of(Matcher<Iterable<?>> matcher, int size) {
+
+            return new MatcherDescription(matcher, size);
         }
     }
 
@@ -70,8 +143,10 @@ public class CliGenerator {
         }
     }
 
+    /*
     List<String> joinMainAndSubCommands(List<String> commands) {
         final List<String> resultCommands = new ArrayList<>();
+
         commands.forEach(nextCommand -> {
             if (nextCommand.startsWith(SPACE)) {
                 final String prevCmd = resultCommands.isEmpty() ? null : resultCommands.remove(resultCommands.size() - 1);
@@ -86,4 +161,5 @@ public class CliGenerator {
         });
         return resultCommands;
     }
+    */
 }
